@@ -247,6 +247,7 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 	private filteredMatchesRenderer: FilteredMatchesRenderer;
 	private hiddenAreasRenderer: HiddenAreasRenderer;
 	private editSettingActionRenderer: EditSettingRenderer;
+	private mostRelevantMatchesRenderer: MostRelevantMatchesRenderer;
 
 	private _onUpdatePreference: Emitter<{ key: string, value: any, source: ISetting }> = new Emitter<{ key: string, value: any, source: ISetting }>();
 	public readonly onUpdatePreference: Event<{ key: string, value: any, source: ISetting }> = this._onUpdatePreference.event;
@@ -270,9 +271,13 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 		this.settingsGroupTitleRenderer = this._register(instantiationService.createInstance(SettingsGroupTitleRenderer, editor));
 		this.filteredMatchesRenderer = this._register(instantiationService.createInstance(FilteredMatchesRenderer, editor));
 		this.editSettingActionRenderer = this._register(instantiationService.createInstance(EditSettingRenderer, editor, preferencesModel, this.settingHighlighter));
+		this.mostRelevantMatchesRenderer = this._register(instantiationService.createInstance(MostRelevantMatchesRenderer, editor));
+
 		this._register(this.editSettingActionRenderer.onUpdateSetting(e => this._onUpdatePreference.fire(e)));
-		const paranthesisHidingRenderer = this._register(instantiationService.createInstance(StaticContentHidingRenderer, editor, preferencesModel.settingsGroups));
-		this.hiddenAreasRenderer = this._register(instantiationService.createInstance(HiddenAreasRenderer, editor, [this.settingsGroupTitleRenderer, this.filteredMatchesRenderer, paranthesisHidingRenderer]));
+		const parenthesisHidingRenderer = this._register(instantiationService.createInstance(StaticContentHidingRenderer, editor, preferencesModel.settingsGroups));
+
+		const hiddenAreasProviders = [this.settingsGroupTitleRenderer, this.filteredMatchesRenderer, parenthesisHidingRenderer, this.mostRelevantMatchesRenderer];
+		this.hiddenAreasRenderer = this._register(instantiationService.createInstance(HiddenAreasRenderer, editor, hiddenAreasProviders));
 
 		this._register(this.settingsGroupTitleRenderer.onHiddenAreasChanged(() => this.hiddenAreasRenderer.render()));
 	}
@@ -298,14 +303,17 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 	public filterPreferences(filterResult: IFilterResult): void {
 		this.filterResult = filterResult;
 		if (!filterResult) {
+			// TODO Never hit...
 			this.settingHighlighter.clear(true);
 			this.filteredMatchesRenderer.render(null);
+			this.mostRelevantMatchesRenderer.render(null);
 			this.settingsHeaderRenderer.render(this.preferencesModel.settingsGroups);
 			this.settingsGroupTitleRenderer.render(this.preferencesModel.settingsGroups);
 			this.settingsGroupTitleRenderer.showGroup(1);
 			this.editSettingActionRenderer.render(this.preferencesModel.settingsGroups, this._associatedPreferencesModel);
 		} else {
 			this.filteredMatchesRenderer.render(filterResult);
+			this.mostRelevantMatchesRenderer.render(filterResult);
 			this.settingsHeaderRenderer.render(filterResult.filteredGroups);
 			this.settingsGroupTitleRenderer.render(filterResult.filteredGroups);
 			this.settingHighlighter.clear(true);
@@ -378,24 +386,24 @@ export class StaticContentHidingRenderer extends Disposable implements HiddenAre
 	get hiddenAreas(): IRange[] {
 		const model = this.editor.getModel();
 		return [
-			{
-				startLineNumber: 1,
-				startColumn: model.getLineMinColumn(1),
-				endLineNumber: 2,
-				endColumn: model.getLineMaxColumn(2)
-			},
-			{
-				startLineNumber: this.settingsGroups[0].range.endLineNumber + 1,
-				startColumn: model.getLineMinColumn(this.settingsGroups[0].range.endLineNumber + 1),
-				endLineNumber: this.settingsGroups[0].range.endLineNumber + 4,
-				endColumn: model.getLineMaxColumn(this.settingsGroups[0].range.endLineNumber + 4)
-			},
-			{
-				startLineNumber: model.getLineCount() - 1,
-				startColumn: model.getLineMinColumn(model.getLineCount() - 1),
-				endLineNumber: model.getLineCount(),
-				endColumn: model.getLineMaxColumn(model.getLineCount())
-			}
+			// {
+			// 	startLineNumber: 1,
+			// 	startColumn: model.getLineMinColumn(1),
+			// 	endLineNumber: 2,
+			// 	endColumn: model.getLineMaxColumn(2)
+			// },
+			// {
+			// 	startLineNumber: this.settingsGroups[0].range.endLineNumber + 1,
+			// 	startColumn: model.getLineMinColumn(this.settingsGroups[0].range.endLineNumber + 1),
+			// 	endLineNumber: this.settingsGroups[0].range.endLineNumber + 4,
+			// 	endColumn: model.getLineMaxColumn(this.settingsGroups[0].range.endLineNumber + 4)
+			// },
+			// {
+			// 	startLineNumber: model.getLineCount() - 1,
+			// 	startColumn: model.getLineMinColumn(model.getLineCount() - 1),
+			// 	endLineNumber: model.getLineCount(),
+			// 	endColumn: model.getLineMaxColumn(model.getLineCount())
+			// }
 		];
 	}
 
@@ -528,6 +536,45 @@ export class HiddenAreasRenderer extends Disposable {
 	public dispose() {
 		this.editor.setHiddenAreas([]);
 		super.dispose();
+	}
+}
+
+export class MostRelevantMatchesRenderer extends Disposable implements HiddenAreasProvider {
+
+	public hiddenAreas: IRange[] = [];
+
+	constructor(private editor: ICodeEditor,
+		@IInstantiationService private instantiationService: IInstantiationService
+	) {
+		super();
+	}
+
+	public render(result: IFilterResult): void {
+		this.hiddenAreas = [];
+		if (result.matches.length) {
+			this.hiddenAreas = [];
+			this.editor.updateOptions({ readOnly: false });
+			this.editor.executeEdits('foo', [{
+				text: '"files.autoSave": "off"\n',
+				forceMoveMarkers: false,
+				range: new Range(4, 0, 5, 0),
+				identifier: { major: 1, minor: 0 }
+			}]);
+			this.editor.updateOptions({ readOnly: true });
+		} else {
+			this.editor.executeEdits('foo', [{
+				text: '',
+				forceMoveMarkers: false,
+				range: new Range(4, 0, 5, 0),
+				identifier: { major: 1, minor: 0 }
+			}]);
+			this.hiddenAreas = [{
+				startLineNumber: 0,
+				startColumn: 0,
+				endLineNumber: 49,
+				endColumn: 0
+			}];
+		}
 	}
 }
 

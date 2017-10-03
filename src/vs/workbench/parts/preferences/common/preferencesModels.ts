@@ -5,6 +5,7 @@
 
 import * as nls from 'vs/nls';
 import { assign } from 'vs/base/common/objects';
+import * as arrays from 'vs/base/common/arrays';
 import URI from 'vs/base/common/uri';
 import { IReference } from 'vs/base/common/lifecycle';
 import Event from 'vs/base/common/event';
@@ -690,6 +691,10 @@ export class DefaultSettingsEditorModel extends AbstractSettingsModel implements
 	private toContent(mostCommonlyUsed: ISettingsGroup, settingsGroups: ISettingsGroup[]): string {
 		this._contentByLines = [];
 		this._contentByLines.push('[');
+		this._contentByLines.push('{');
+		this._contentByLines.push(...arrays.fill(48, () => ''));
+		this._contentByLines.push('}');
+		this._contentByLines.push(',');
 		this.pushGroups([mostCommonlyUsed]);
 		this._contentByLines.push(',');
 		this.pushGroups(settingsGroups);
@@ -715,12 +720,12 @@ export class DefaultSettingsEditorModel extends AbstractSettingsModel implements
 		const indent = '  ';
 		let lastSetting: ISetting = null;
 		this._contentByLines.push('');
-		let groupStart = this._contentByLines.length + 1;
+		let groupStart = this.currentLine() + 1;
 		for (const section of group.sections) {
 			if (section.title) {
-				let sectionTitleStart = this._contentByLines.length + 1;
+				let sectionTitleStart = this.currentLine() + 1;
 				this.addDescription([section.title], indent, this._contentByLines);
-				section.titleRange = { startLineNumber: sectionTitleStart, startColumn: 1, endLineNumber: this._contentByLines.length, endColumn: this._contentByLines[this._contentByLines.length - 1].length };
+				section.titleRange = { startLineNumber: sectionTitleStart, startColumn: 1, endLineNumber: this.currentLine(), endColumn: this._contentByLines[this.currentLine() - 1].length };
 			}
 
 			if (section.settings.length) {
@@ -734,32 +739,32 @@ export class DefaultSettingsEditorModel extends AbstractSettingsModel implements
 			}
 
 		}
-		group.range = { startLineNumber: groupStart, startColumn: 1, endLineNumber: this._contentByLines.length, endColumn: this._contentByLines[this._contentByLines.length - 1].length };
+		group.range = { startLineNumber: groupStart, startColumn: 1, endLineNumber: this.currentLine(), endColumn: this._contentByLines[this.currentLine() - 1].length };
 		return lastSetting;
 	}
 
 	private pushSetting(setting: ISetting, indent: string): void {
-		const settingStart = this._contentByLines.length + 1;
+		const settingStart = this.currentLine() + 1;
 		setting.descriptionRanges = [];
 		const descriptionPreValue = indent + '// ';
 		for (const line of setting.description) {
 			this._contentByLines.push(descriptionPreValue + line);
-			setting.descriptionRanges.push({ startLineNumber: this._contentByLines.length, startColumn: this._contentByLines[this._contentByLines.length - 1].indexOf(line) + 1, endLineNumber: this._contentByLines.length, endColumn: this._contentByLines[this._contentByLines.length - 1].length });
+			setting.descriptionRanges.push({ startLineNumber: this.currentLine(), startColumn: this._contentByLines[this.currentLine() - 1].indexOf(line) + 1, endLineNumber: this.currentLine(), endColumn: this._contentByLines[this.currentLine() - 1].length });
 		}
 
 		let preValueConent = indent;
 		const keyString = JSON.stringify(setting.key);
 		preValueConent += keyString;
-		setting.keyRange = { startLineNumber: this._contentByLines.length + 1, startColumn: preValueConent.indexOf(setting.key) + 1, endLineNumber: this._contentByLines.length + 1, endColumn: setting.key.length };
+		setting.keyRange = { startLineNumber: this.currentLine() + 1, startColumn: preValueConent.indexOf(setting.key) + 1, endLineNumber: this.currentLine() + 1, endColumn: setting.key.length };
 
 		preValueConent += ': ';
-		const valueStart = this._contentByLines.length + 1;
+		const valueStart = this.currentLine() + 1;
 		this.pushValue(setting, preValueConent, indent);
 
-		setting.valueRange = { startLineNumber: valueStart, startColumn: preValueConent.length + 1, endLineNumber: this._contentByLines.length, endColumn: this._contentByLines[this._contentByLines.length - 1].length + 1 };
-		this._contentByLines[this._contentByLines.length - 1] += ',';
+		setting.valueRange = { startLineNumber: valueStart, startColumn: preValueConent.length + 1, endLineNumber: this.currentLine(), endColumn: this._contentByLines[this.currentLine() - 1].length + 1 };
+		this._contentByLines[this.currentLine() - 1] += ',';
 		this._contentByLines.push('');
-		setting.range = { startLineNumber: settingStart, startColumn: 1, endLineNumber: this._contentByLines.length, endColumn: this._contentByLines[this._contentByLines.length - 1].length };
+		setting.range = { startLineNumber: settingStart, startColumn: 1, endLineNumber: this.currentLine(), endColumn: this._contentByLines[this.currentLine() - 1].length };
 	}
 
 	private pushValue(setting: ISetting, preValueConent: string, indent: string): void {
@@ -785,6 +790,10 @@ export class DefaultSettingsEditorModel extends AbstractSettingsModel implements
 		} else {
 			this._contentByLines.push(preValueConent + valueString);
 		}
+	}
+
+	private currentLine(): number {
+		return this._contentByLines.length;
 	}
 
 	private addDescription(description: string[], indent: string, result: string[]) {

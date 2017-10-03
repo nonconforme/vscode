@@ -44,6 +44,7 @@ export interface IFilterResult {
 	filteredGroups: ISettingsGroup[];
 	allGroups: ISettingsGroup[];
 	matches: IRange[];
+	mostRelevantMatches: IRange[];
 }
 
 export interface IPreferencesEditorModel<T> {
