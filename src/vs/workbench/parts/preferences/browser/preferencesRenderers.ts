@@ -307,7 +307,6 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 
 	public filterPreferences(filterResult: IFilterResult): void {
 		this.filterResult = filterResult;
-		this.mostRelevantMatchesRenderer.render(filterResult);
 		// if (!filterResult) {
 		// 	// TODO Never hit...
 		// 	this.settingHighlighter.clear(true);
@@ -544,84 +543,41 @@ export class HiddenAreasRenderer extends Disposable {
 }
 
 export class MostRelevantMatchesRenderer extends Disposable implements HiddenAreasProvider {
+
 	public hiddenAreas: IRange[] = [];
-	private startLine: number;
 
 	constructor(private editor: ICodeEditor,
-		private originalModel: editorCommon.IModel
+		@IInstantiationService private instantiationService: IInstantiationService
 	) {
 		super();
-		this.startLine = this.editor.getModel().getLineCount() - 1;
 	}
 
 	public render(result: IFilterResult): void {
+		this.hiddenAreas = [];
 		if (result.matches.length) {
+			this.hiddenAreas = [];
 			this.editor.updateOptions({ readOnly: false });
-
-			const settingsValue = this.computeVisibleRanges(result.filteredGroups, result.allGroups, result.scores, this.originalModel).map(visibleRange => {
-				const value = this.originalModel.getValueInRange(visibleRange);
-				return value.replace(/[^,]\n/, ',\n');
-			}).join('\n');
-			const newValue = '[\n{\n' + settingsValue + '\n}\n]';
-			this.editor.setValue(newValue);
-
+			this.editor.executeEdits('foo', [{
+				text: '"files.autoSave": "off"\n',
+				forceMoveMarkers: false,
+				range: new Range(4, 0, 5, 0),
+				identifier: { major: 1, minor: 0 }
+			}]);
 			this.editor.updateOptions({ readOnly: true });
 		} else {
-			this.editor.updateOptions({ readOnly: false });
-			this.editor.getModel().setValue('');
-			this.editor.updateOptions({ readOnly: true });
+			this.editor.executeEdits('foo', [{
+				text: '',
+				forceMoveMarkers: false,
+				range: new Range(4, 0, 5, 0),
+				identifier: { major: 1, minor: 0 }
+			}]);
+			this.hiddenAreas = [{
+				startLineNumber: 0,
+				startColumn: 0,
+				endLineNumber: 49,
+				endColumn: 0
+			}];
 		}
-	}
-
-	private computeVisibleRanges(filteredGroups: ISettingsGroup[], allSettingsGroups: ISettingsGroup[], scores: any, model: editorCommon.IModel): IRange[] {
-		const matchingRanges: { range: IRange, name: string }[] = [];
-		for (const group of allSettingsGroups) {
-			const filteredGroup = filteredGroups.filter(g => g.title === group.title)[0];
-			if (filteredGroup) {
-				for (const section of group.sections) {
-					for (const setting of section.settings) {
-						if (this.containsLine(setting.range.startLineNumber, filteredGroup)) {
-							matchingRanges.push({
-								name: setting.key,
-								range: this.createCompleteRange(setting.range, model)
-							});
-						}
-					}
-				}
-			}
-		}
-
-		return matchingRanges
-			.sort((a, b) => scores[b.name] - scores[a.name])
-			.map(r => r.range);
-	}
-
-	private containsLine(lineNumber: number, settingsGroup: ISettingsGroup): boolean {
-		if (settingsGroup.titleRange && lineNumber >= settingsGroup.titleRange.startLineNumber && lineNumber <= settingsGroup.titleRange.endLineNumber) {
-			return true;
-		}
-
-		for (const section of settingsGroup.sections) {
-			if (section.titleRange && lineNumber >= section.titleRange.startLineNumber && lineNumber <= section.titleRange.endLineNumber) {
-				return true;
-			}
-
-			for (const setting of section.settings) {
-				if (lineNumber >= setting.range.startLineNumber && lineNumber <= setting.range.endLineNumber) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	private createCompleteRange(range: IRange, model: editorCommon.IModel): IRange {
-		return {
-			startLineNumber: range.startLineNumber,
-			startColumn: model.getLineMinColumn(range.startLineNumber),
-			endLineNumber: range.endLineNumber,
-			endColumn: model.getLineMaxColumn(range.endLineNumber)
-		};
 	}
 }
 

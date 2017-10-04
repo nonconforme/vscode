@@ -5,6 +5,7 @@
 
 import * as nls from 'vs/nls';
 import { assign } from 'vs/base/common/objects';
+import * as arrays from 'vs/base/common/arrays';
 import URI from 'vs/base/common/uri';
 import { IReference } from 'vs/base/common/lifecycle';
 import Event from 'vs/base/common/event';
@@ -690,6 +691,10 @@ export class DefaultSettingsEditorModel extends AbstractSettingsModel implements
 	private toContent(mostCommonlyUsed: ISettingsGroup, settingsGroups: ISettingsGroup[]): string {
 		this._contentByLines = [];
 		this._contentByLines.push('[');
+		this._contentByLines.push('{');
+		this._contentByLines.push(...arrays.fill(48, () => ''));
+		this._contentByLines.push('}');
+		this._contentByLines.push(',');
 		this.pushGroups([mostCommonlyUsed]);
 		this._contentByLines.push(',');
 		this.pushGroups(settingsGroups);
