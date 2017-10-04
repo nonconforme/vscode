@@ -285,8 +285,6 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 		this.hiddenAreasRenderer = this._register(instantiationService.createInstance(HiddenAreasRenderer, editor, hiddenAreasProviders));
 
 		this._register(this.settingsGroupTitleRenderer.onHiddenAreasChanged(() => this.hiddenAreasRenderer.render()));
-
-		this.editor.setModel(Model.createFromString('\n\n\n\n', undefined, modeService.getMode('json').getLanguageIdentifier(), URI.parse('vscode://defaultsettings/settings2.json')));
 	}
 
 	public get associatedPreferencesModel(): IPreferencesEditorModel<ISetting> {

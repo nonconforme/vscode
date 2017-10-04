@@ -63,6 +63,9 @@ export class PreferencesService extends Disposable implements IPreferencesServic
 
 	private _onDispose: Emitter<void> = new Emitter<void>();
 
+	private _defaultSettingsUriCounter = 0;
+	private _defaultResourceSettingsUriCounter = 0;
+
 	constructor(
 		@IWorkbenchEditorService private editorService: IWorkbenchEditorService,
 		@IEditorGroupService private editorGroupService: IEditorGroupService,
@@ -103,8 +106,7 @@ export class PreferencesService extends Disposable implements IPreferencesServic
 		});
 	}
 
-	readonly defaultSettingsResource = URI.from({ scheme: network.Schemas.vscode, authority: 'defaultsettings', path: '/settings.json' });
-	readonly defaultResourceSettingsResource = URI.from({ scheme: network.Schemas.vscode, authority: 'defaultsettings', path: '/resourceSettings.json' });
+	readonly defaultSettingsResource = URI.from({ scheme: network.Schemas.vscode, authority: 'defaultsettings', path: '/0/settings.json' }); // TODO
 	readonly defaultKeybindingsResource = URI.from({ scheme: network.Schemas.vscode, authority: 'defaultsettings', path: '/keybindings.json' });
 	private readonly workspaceConfigSettingsResource = URI.from({ scheme: network.Schemas.vscode, authority: 'settings', path: '/workspaceSettings.json' });
 
@@ -135,7 +137,7 @@ export class PreferencesService extends Disposable implements IPreferencesServic
 			return promise;
 		}
 
-		if (this.defaultSettingsResource.toString() === uri.toString()) {
+		if (this.isDefaultSettingsResource(uri)) {
 			promise = TPromise.join<any>([this.extensionService.onReady(), this.fetchMostCommonlyUsedSettings()])
 				.then(result => {
 					const mostCommonSettings = result[1];
@@ -146,7 +148,7 @@ export class PreferencesService extends Disposable implements IPreferencesServic
 			return promise;
 		}
 
-		if (this.defaultResourceSettingsResource.toString() === uri.toString()) {
+		if (this.isDefaultResourceSettingsResource(uri)) {
 			promise = TPromise.join<any>([this.extensionService.onReady(), this.fetchMostCommonlyUsedSettings()])
 				.then(result => {
 					const mostCommonSettings = result[1];
@@ -273,11 +275,21 @@ export class PreferencesService extends Disposable implements IPreferencesServic
 			});
 	}
 
+	private isDefaultSettingsResource(uri: URI): boolean {
+		return uri.authority === 'defaultsettings' && uri.scheme === network.Schemas.vscode && !!uri.path.match(/\/\d+\/settings\.json$/);
+	}
+
+	private isDefaultResourceSettingsResource(uri: URI): boolean {
+		return uri.authority === 'defaultsettings' && uri.scheme === network.Schemas.vscode && !!uri.path.match(/\/\d+\/resourceSettings\.json$/);
+	}
+
 	private getDefaultSettingsResource(configurationTarget: ConfigurationTarget): URI {
 		if (configurationTarget === ConfigurationTarget.FOLDER) {
-			return this.defaultResourceSettingsResource;
+			return URI.from({ scheme: network.Schemas.vscode, authority: 'defaultsettings', path: `/${this._defaultResourceSettingsUriCounter++}/resourceSettings.json` });
 		}
-		return this.defaultSettingsResource;
+
+		// TODO pool of models
+		return URI.from({ scheme: network.Schemas.vscode, authority: 'defaultsettings', path: `/${this._defaultSettingsUriCounter++}/settings.json` });
 	}
 
 	private getPreferencesEditorInputName(target: ConfigurationTarget, resource: URI): string {

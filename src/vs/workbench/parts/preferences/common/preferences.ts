@@ -73,7 +73,6 @@ export interface IPreferencesService {
 	_serviceBrand: any;
 
 	defaultSettingsResource: URI;
-	defaultResourceSettingsResource: URI;
 	userSettingsResource: URI;
 	workspaceSettingsResource: URI;
 	getFolderSettingsResource(resource: URI): URI;
