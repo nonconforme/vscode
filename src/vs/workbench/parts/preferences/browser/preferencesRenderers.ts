@@ -306,18 +306,17 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 
 	public filterPreferences(filterResult: IFilterResult): void {
 		this.filterResult = filterResult;
-		if (filterResult && filterResult.scores) {
-			this.filteredMatchesRenderer.render(null);
+		if (filterResult) {
+			if (filterResult.scores) {
+				this.filteredMatchesRenderer.render(null);
+				this.settingsGroupTitleRenderer.render(null);
+			} else {
+				this.filteredMatchesRenderer.render(filterResult);
+				this.settingsGroupTitleRenderer.render(filterResult.filteredGroups);
+			}
+
 			this.mostRelevantMatchesRenderer.render(filterResult);
 			this.settingsHeaderRenderer.render(filterResult.filteredGroups);
-			this.settingsGroupTitleRenderer.render(filterResult.filteredGroups);
-			this.settingHighlighter.clear(true);
-			this.editSettingActionRenderer.render(filterResult.filteredGroups, this._associatedPreferencesModel);
-		} else if (filterResult) {
-			this.filteredMatchesRenderer.render(filterResult);
-			this.mostRelevantMatchesRenderer.render(filterResult);
-			this.settingsHeaderRenderer.render(filterResult.filteredGroups);
-			this.settingsGroupTitleRenderer.render(filterResult.filteredGroups);
 			this.settingHighlighter.clear(true);
 			this.editSettingActionRenderer.render(filterResult.filteredGroups, this._associatedPreferencesModel);
 		} else {
@@ -329,6 +328,7 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 			this.settingsGroupTitleRenderer.showGroup(1);
 			this.editSettingActionRenderer.render(this.preferencesModel.settingsGroups, this._associatedPreferencesModel);
 		}
+
 		this.hiddenAreasRenderer.render();
 	}
 
@@ -472,6 +472,10 @@ export class SettingsGroupTitleRenderer extends Disposable implements HiddenArea
 
 	public render(settingsGroups: ISettingsGroup[]) {
 		this.disposeWidgets();
+		if (!settingsGroups) {
+			return;
+		}
+
 		this.settingsGroups = settingsGroups.slice();
 		this.settingsGroupTitleWidgets = [];
 		for (const group of this.settingsGroups.slice().reverse()) {
@@ -559,7 +563,7 @@ export class HiddenAreasRenderer extends Disposable {
 
 export class MostRelevantMatchesRenderer extends Disposable implements HiddenAreasProvider {
 
-	private static settingsInsertStart = 3;
+	private static settingsInsertStart = 4;
 	private static settingsInsertEnd = 49;
 	private static emptyLines = MostRelevantMatchesRenderer.settingsInsertEnd - MostRelevantMatchesRenderer.settingsInsertStart + 1;
 	private static bunchOfNewlines = strings.repeat('\n', MostRelevantMatchesRenderer.emptyLines);
@@ -595,18 +599,19 @@ export class MostRelevantMatchesRenderer extends Disposable implements HiddenAre
 				.filter(line => !!line)
 				.join('\n');
 
-			const startLine = MostRelevantMatchesRenderer.settingsInsertStart;
+			const settingsTextStartLine = MostRelevantMatchesRenderer.settingsInsertStart;
+			const settingsTextEndLine = settingsTextStartLine + totalLines - 1;
 			this.editor.executeEdits(MostRelevantMatchesRenderer.editId, [{
 				text: settingsValue,
 				forceMoveMarkers: false,
-				range: new Range(startLine, 0, startLine + totalLines - 1, 0),
+				range: new Range(settingsTextStartLine, 0, settingsTextEndLine, 0),
 				identifier: { major: 1, minor: 0 }
 			}]);
 
 			this.editor.updateOptions({ readOnly: true });
 
 			this.hiddenAreas = [{
-				startLineNumber: MostRelevantMatchesRenderer.settingsInsertEnd,
+				startLineNumber: settingsTextEndLine + 1,
 				startColumn: 0,
 				endLineNumber: this.editor.getModel().getLineCount(),
 				endColumn: 0

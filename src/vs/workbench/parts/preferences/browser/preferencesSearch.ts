@@ -206,6 +206,7 @@ class RemoteSearchProvider {
 function getSettingsFromBing(filter: string): TPromise<{ [key: string]: number }> {
 	const url = prepareUrl(filter);
 	console.log('fetching: ' + url);
+	const start = Date.now();
 	const p = fetch(url, {
 		headers: {
 			'User-Agent': 'request',
@@ -215,6 +216,7 @@ function getSettingsFromBing(filter: string): TPromise<{ [key: string]: number }
 	})
 		.then(r => r.json())
 		.then(result => {
+			console.log('time: ' + (Date.now() - start) / 1000);
 			const suggestions = (result.value || [])
 				.filter(r => r['@search.score'] >= 0.2)
 				.map(r => ({

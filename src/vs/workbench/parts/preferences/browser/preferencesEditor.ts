@@ -435,7 +435,7 @@ class PreferencesRenderers extends Disposable {
 			const editablePreferencesFilteredGroups = editablePreferencesFilterResult ? editablePreferencesFilterResult.filteredGroups : this._getAllPreferences(this._editablePreferencesRenderer);
 			const consolidatedSettings = this._consolidateSettings(editablePreferencesFilteredGroups, defaultPreferencesFilteredGroups);
 
-			if (defaultPreferencesFilterResult.scores) {
+			if (defaultPreferencesFilterResult && defaultPreferencesFilterResult.scores) {
 				this._settingsNavigator = null;
 			} else {
 				this._settingsNavigator = new SettingsNavigator(filter ? consolidatedSettings : []);
