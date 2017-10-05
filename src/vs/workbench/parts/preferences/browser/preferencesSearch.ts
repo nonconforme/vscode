@@ -4,9 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { TPromise } from 'vs/base/common/winjs.base';
-import { ISettingsEditorModel, IFilterResult, ISetting } from 'vs/workbench/parts/preferences/common/preferences';
+import { ISettingsEditorModel, IFilterResult, ISetting, ISettingsGroup } from 'vs/workbench/parts/preferences/common/preferences';
 import { IRange, Range } from 'vs/editor/common/core/range';
 import { distinct } from 'vs/base/common/arrays';
+import * as strings from 'vs/base/common/strings';
 import { IJSONSchema } from 'vs/base/common/jsonSchema';
 import { Registry } from 'vs/platform/registry/common/platform';
 import { IConfigurationRegistry, Extensions } from 'vs/platform/configuration/common/configurationRegistry';
@@ -134,25 +135,51 @@ class SettingMatches {
 }
 
 export class PreferencesSearchProvider {
-	constructor(filter: string) {
+	private _localProvider: LocalSearchProvider;
+	private _remoteProvider: RemoteSearchProvider;
 
+	constructor(filter: string) {
+		this._localProvider = new LocalSearchProvider(filter);
+		this._remoteProvider = new RemoteSearchProvider(filter);
 	}
 
 	filterPreferences(preferencesModel: ISettingsEditorModel): TPromise<IFilterResult> {
-		return null;
+		// return this._localProvider.filterPreferences(preferencesModel);
+		return this._remoteProvider.filterPreferences(preferencesModel).then(null, err => {
+			return this._localProvider.filterPreferences(preferencesModel);
+		});
 	}
 }
 
-export class RemoteSearchProvider {
+class LocalSearchProvider {
+	private _filter: string;
+
+	constructor(filter: string) {
+		this._filter = filter;
+	}
+
+	filterPreferences(preferencesModel: ISettingsEditorModel): TPromise<IFilterResult> {
+		const regex = strings.createRegExp(this._filter, false, { global: true });
+
+		const groupFilter = (group: ISettingsGroup) => {
+			return regex.test(group.title);
+		};
+
+		const settingFilter = (setting: ISetting) => {
+			return new SettingMatches(this._filter, setting, (filter, setting) => preferencesModel.findValueMatches(filter, setting)).matches;
+		};
+
+		return TPromise.wrap(preferencesModel.filterSettings(this._filter, groupFilter, settingFilter));
+	}
+}
+
+class RemoteSearchProvider {
 	private _filter: string;
 	private _remoteSearchP: TPromise<{ [key: string]: number }>;
 
 	constructor(filter: string) {
 		this._filter = filter;
-		this._remoteSearchP = getSettingsFromBing(filter).then(null, e => {
-			console.error(e.toString());
-			return null;
-		});
+		this._remoteSearchP = getSettingsFromBing(filter);
 	}
 
 	filterPreferences(preferencesModel: ISettingsEditorModel): TPromise<IFilterResult> {

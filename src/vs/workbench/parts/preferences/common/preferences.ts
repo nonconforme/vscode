@@ -54,7 +54,7 @@ export interface IPreferencesEditorModel<T> {
 	dispose(): void;
 }
 
-export type IGroupFilter = (group: ISettingsGroup) => IRange[];
+export type IGroupFilter = (group: ISettingsGroup) => boolean;
 export type ISettingFilter = (setting: ISetting) => IRange[];
 
 export interface ISettingsEditorModel extends IPreferencesEditorModel<ISetting> {

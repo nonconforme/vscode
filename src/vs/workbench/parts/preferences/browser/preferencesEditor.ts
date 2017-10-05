@@ -29,7 +29,7 @@ import { SettingsEditorModel, DefaultSettingsEditorModel } from 'vs/workbench/pa
 import { editorContribution } from 'vs/editor/browser/editorBrowserExtensions';
 import { ICodeEditor, IEditorContributionCtor } from 'vs/editor/browser/editorBrowser';
 import { SearchWidget, SettingsTargetsWidget } from 'vs/workbench/parts/preferences/browser/preferencesWidgets';
-import { RemoteSearchProvider } from 'vs/workbench/parts/preferences/browser/preferencesSearch';
+import { PreferencesSearchProvider } from 'vs/workbench/parts/preferences/browser/preferencesSearch';
 import { ContextKeyExpr, IContextKeyService, IContextKey } from 'vs/platform/contextkey/common/contextkey';
 import { Command } from 'vs/editor/common/editorCommonExtensions';
 import { ITelemetryService } from 'vs/platform/telemetry/common/telemetry';
@@ -170,13 +170,13 @@ export class PreferencesEditor extends BaseEditor {
 
 	public focusNextResult(): void {
 		if (this.preferencesRenderers) {
-			// this.preferencesRenderers.focusNextPreference(true);
+			this.preferencesRenderers.focusNextPreference(true);
 		}
 	}
 
 	public focusPreviousResult(): void {
 		if (this.preferencesRenderers) {
-			// this.preferencesRenderers.focusNextPreference(false);
+			this.preferencesRenderers.focusNextPreference(false);
 		}
 	}
 
@@ -421,7 +421,7 @@ class PreferencesRenderers extends Disposable {
 			this._filtersInProgress.forEach(p => p.cancel && p.cancel());
 		}
 
-		const searchProvider = new RemoteSearchProvider(filter);
+		const searchProvider = new PreferencesSearchProvider(filter);
 		this._filtersInProgress = [
 			this._filterPreferences(filter, searchProvider, this._defaultPreferencesRenderer),
 			this._filterPreferences(filter, searchProvider, this._editablePreferencesRenderer)];
@@ -450,9 +450,13 @@ class PreferencesRenderers extends Disposable {
 		return preferencesRenderer ? (<ISettingsEditorModel>preferencesRenderer.preferencesModel).settingsGroups : [];
 	}
 
-	private _filterPreferences(filter: string, searchProvider: RemoteSearchProvider, preferencesRenderer: IPreferencesRenderer<ISetting>): TPromise<IFilterResult> {
+	private _filterPreferences(filter: string, searchProvider: PreferencesSearchProvider, preferencesRenderer: IPreferencesRenderer<ISetting>): TPromise<IFilterResult> {
 		if (preferencesRenderer) {
-			return searchProvider.filterPreferences(<ISettingsEditorModel>preferencesRenderer.preferencesModel).then(filterResult => {
+			const prefSearchP = filter ?
+				searchProvider.filterPreferences(<ISettingsEditorModel>preferencesRenderer.preferencesModel) :
+				TPromise.wrap(null);
+
+			return prefSearchP.then(filterResult => {
 				preferencesRenderer.filterPreferences(filterResult);
 				return filterResult;
 			});

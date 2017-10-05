@@ -86,39 +86,6 @@ export abstract class AbstractSettingsModel extends EditorModel {
 			}
 		}
 		return { filteredGroups, matches, allGroups };
-
-		// const regex = strings.createRegExp(filter, false, { global: true });
-		// for (const group of allGroups) {
-		// 	const groupMatched = regex.test(group.title);
-		// 	const sections: ISettingsSection[] = [];
-		// 	for (const section of group.sections) {
-		// 		const settings: ISetting[] = [];
-		// 		for (const setting of section.settings) {
-		// 			const settingMatches = new SettingMatches(filter, setting, (filter, setting) => this.findValueMatches(filter, setting)).matches;
-		// 			if (groupMatched || settingMatches.length > 0) {
-		// 				settings.push(setting);
-		// 			}
-		// 			matches.push(...settingMatches);
-		// 		}
-		// 		if (settings.length) {
-		// 			sections.push({
-		// 				title: section.title,
-		// 				settings,
-		// 				titleRange: section.titleRange
-		// 			});
-		// 		}
-		// 	}
-		// 	if (sections.length) {
-		// 		filteredGroups.push({
-		// 			id: group.id,
-		// 			title: group.title,
-		// 			titleRange: group.titleRange,
-		// 			sections,
-		// 			range: group.range
-		// 		});
-		// 	}
-		// }
-		// return { filteredGroups, matches, allGroups };
 	}
 
 	private filterByGroupTerm(filter: string): ISettingsGroup {
