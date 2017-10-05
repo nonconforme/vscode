@@ -506,6 +506,8 @@ export class WorkspaceConfigModel extends SettingsEditorModel implements ISettin
 
 export class DefaultSettingsEditorModel extends AbstractSettingsModel implements ISettingsEditorModel {
 
+	public static MOST_RELEVANT_SECTION_LENGTH = 50;
+
 	private _allSettingsGroups: ISettingsGroup[];
 	private _content: string;
 	private _contentByLines: string[];
@@ -692,7 +694,7 @@ export class DefaultSettingsEditorModel extends AbstractSettingsModel implements
 		this._contentByLines = [];
 		this._contentByLines.push('[');
 		this._contentByLines.push('{');
-		this._contentByLines.push(...arrays.fill(48, () => ''));
+		this._contentByLines.push(...arrays.fill(DefaultSettingsEditorModel.MOST_RELEVANT_SECTION_LENGTH - 3, () => ''));
 		this._contentByLines.push('}');
 		this._contentByLines.push(',');
 		this.pushGroups([mostCommonlyUsed]);

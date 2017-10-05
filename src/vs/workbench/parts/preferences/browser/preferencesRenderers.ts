@@ -276,12 +276,12 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 		this.settingsGroupTitleRenderer = this._register(instantiationService.createInstance(SettingsGroupTitleRenderer, editor));
 		this.filteredMatchesRenderer = this._register(instantiationService.createInstance(FilteredMatchesRenderer, editor));
 		// this.editSettingActionRenderer = this._register(instantiationService.createInstance(EditSettingRenderer, editor, preferencesModel, this.settingHighlighter));
-		this.mostRelevantMatchesRenderer = this._register(instantiationService.createInstance(MostRelevantMatchesRenderer, editor, this.editor.getModel()));
+		this.mostRelevantMatchesRenderer = this._register(instantiationService.createInstance(MostRelevantMatchesRenderer, editor));
 
 		// this._register(this.editSettingActionRenderer.onUpdateSetting(e => this._onUpdatePreference.fire(e)));
 		const parenthesisHidingRenderer = this._register(instantiationService.createInstance(StaticContentHidingRenderer, editor, preferencesModel.settingsGroups));
 
-		const hiddenAreasProviders = [parenthesisHidingRenderer];
+		const hiddenAreasProviders = [parenthesisHidingRenderer, this.mostRelevantMatchesRenderer];
 		this.hiddenAreasRenderer = this._register(instantiationService.createInstance(HiddenAreasRenderer, editor, hiddenAreasProviders));
 
 		this._register(this.settingsGroupTitleRenderer.onHiddenAreasChanged(() => this.hiddenAreasRenderer.render()));
@@ -324,6 +324,7 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 		// 	this.settingHighlighter.clear(true);
 		// 	this.editSettingActionRenderer.render(filterResult.filteredGroups, this._associatedPreferencesModel);
 		// }
+		this.mostRelevantMatchesRenderer.render(filterResult);
 		this.hiddenAreasRenderer.render();
 	}
 
@@ -544,6 +545,12 @@ export class HiddenAreasRenderer extends Disposable {
 
 export class MostRelevantMatchesRenderer extends Disposable implements HiddenAreasProvider {
 
+	private static settingsInsertStart = 3;
+	private static settingsInsertEnd = 49;
+	private static emptyLines = MostRelevantMatchesRenderer.settingsInsertEnd - MostRelevantMatchesRenderer.settingsInsertStart + 1;
+	private static bunchOfNewlines = strings.repeat('\n', MostRelevantMatchesRenderer.emptyLines);
+	private static editId = 'mostRelevantMatchesRenderer';
+
 	public hiddenAreas: IRange[] = [];
 
 	constructor(private editor: ICodeEditor,
@@ -557,27 +564,104 @@ export class MostRelevantMatchesRenderer extends Disposable implements HiddenAre
 		if (result.matches.length) {
 			this.hiddenAreas = [];
 			this.editor.updateOptions({ readOnly: false });
-			this.editor.executeEdits('foo', [{
-				text: '"files.autoSave": "off"\n',
+
+			const relevantRanges = this.getRelevantRanges(result.filteredGroups, result.allGroups, result.scores, this.editor.getModel());
+			let totalLines = 0;
+			const settingsValue = relevantRanges.map(visibleRange => {
+				const settingLines = (visibleRange.endLineNumber - visibleRange.startLineNumber) + 1;
+				if (totalLines + settingLines <= MostRelevantMatchesRenderer.emptyLines) {
+					totalLines += settingLines;
+					const value = this.editor.getModel().getValueInRange(visibleRange);
+					return value.replace(/[^,]\n$/, ',\n'); // ensure ends in ','
+				} else {
+					// Skip lines that push the total length past 50
+					return null;
+				}
+			})
+				.filter(line => !!line)
+				.join('\n');
+
+			const startLine = MostRelevantMatchesRenderer.settingsInsertStart;
+			this.editor.executeEdits(MostRelevantMatchesRenderer.editId, [{
+				text: settingsValue,
 				forceMoveMarkers: false,
-				range: new Range(4, 0, 5, 0),
+				range: new Range(startLine, 0, startLine + totalLines - 1, 0),
 				identifier: { major: 1, minor: 0 }
 			}]);
+
 			this.editor.updateOptions({ readOnly: true });
+
+			this.hiddenAreas = [{
+				startLineNumber: MostRelevantMatchesRenderer.settingsInsertEnd,
+				startColumn: 0,
+				endLineNumber: this.editor.getModel().getLineCount(),
+				endColumn: 0
+			}];
 		} else {
-			this.editor.executeEdits('foo', [{
-				text: '',
+			this.editor.executeEdits(MostRelevantMatchesRenderer.editId, [{
+				text: MostRelevantMatchesRenderer.bunchOfNewlines,
 				forceMoveMarkers: false,
-				range: new Range(4, 0, 5, 0),
+				range: new Range(MostRelevantMatchesRenderer.settingsInsertStart, 0, MostRelevantMatchesRenderer.settingsInsertEnd, 0),
 				identifier: { major: 1, minor: 0 }
 			}]);
 			this.hiddenAreas = [{
-				startLineNumber: 0,
+				startLineNumber: MostRelevantMatchesRenderer.settingsInsertStart,
 				startColumn: 0,
-				endLineNumber: 49,
+				endLineNumber: MostRelevantMatchesRenderer.settingsInsertEnd,
 				endColumn: 0
 			}];
 		}
+	}
+
+	private getRelevantRanges(filteredGroups: ISettingsGroup[], allSettingsGroups: ISettingsGroup[], scores: any, model: editorCommon.IModel): IRange[] {
+		const matchingRanges: { range: IRange, name: string }[] = [];
+		for (const group of allSettingsGroups) {
+			const filteredGroup = filteredGroups.filter(g => g.title === group.title)[0];
+			if (filteredGroup) {
+				for (const section of group.sections) {
+					for (const setting of section.settings) {
+						if (this.containsLine(setting.range.startLineNumber, filteredGroup)) {
+							matchingRanges.push({
+								name: setting.key,
+								range: this.createCompleteRange(setting.range, model)
+							});
+						}
+					}
+				}
+			}
+		}
+
+		return matchingRanges
+			.sort((a, b) => scores[b.name] - scores[a.name])
+			.map(r => r.range);
+	}
+
+	private containsLine(lineNumber: number, settingsGroup: ISettingsGroup): boolean {
+		if (settingsGroup.titleRange && lineNumber >= settingsGroup.titleRange.startLineNumber && lineNumber <= settingsGroup.titleRange.endLineNumber) {
+			return true;
+		}
+
+		for (const section of settingsGroup.sections) {
+			if (section.titleRange && lineNumber >= section.titleRange.startLineNumber && lineNumber <= section.titleRange.endLineNumber) {
+				return true;
+			}
+
+			for (const setting of section.settings) {
+				if (lineNumber >= setting.range.startLineNumber && lineNumber <= setting.range.endLineNumber) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private createCompleteRange(range: IRange, model: editorCommon.IModel): IRange {
+		return {
+			startLineNumber: range.startLineNumber,
+			startColumn: model.getLineMinColumn(range.startLineNumber),
+			endLineNumber: range.endLineNumber,
+			endColumn: model.getLineMaxColumn(range.endLineNumber)
+		};
 	}
 }
 

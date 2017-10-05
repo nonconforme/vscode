@@ -389,6 +389,7 @@ class PreferencesRenderers extends Disposable {
 	private _defaultPreferencesRenderer: IPreferencesRenderer<ISetting>;
 	private _editablePreferencesRenderer: IPreferencesRenderer<ISetting>;
 	private _settingsNavigator: SettingsNavigator;
+	private _filtersInProgress: TPromise<any>[];
 
 	private _disposables: IDisposable[] = [];
 
@@ -415,10 +416,17 @@ class PreferencesRenderers extends Disposable {
 	}
 
 	public filterPreferences(filter: string): TPromise<number> {
+		if (this._filtersInProgress) {
+			this._filtersInProgress.forEach(p => p.cancel());
+		}
+
 		const searchProvider = new RemoteSearchProvider(filter);
-		const filterPromises = TPromise.join([this._filterPreferences(filter, searchProvider, this._defaultPreferencesRenderer),
-		this._filterPreferences(filter, searchProvider, this._editablePreferencesRenderer)]);
-		return filterPromises.then(filterResults => {
+		this._filtersInProgress = [
+			this._filterPreferences(filter, searchProvider, this._defaultPreferencesRenderer),
+			this._filterPreferences(filter, searchProvider, this._editablePreferencesRenderer)];
+
+		return TPromise.join(this._filtersInProgress).then(filterResults => {
+			this._filtersInProgress = null;
 			const defaultPreferencesFilterResult = filterResults[0];
 			const editablePreferencesFilterResult = filterResults[1];
 
