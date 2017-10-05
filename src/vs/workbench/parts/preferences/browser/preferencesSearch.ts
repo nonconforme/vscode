@@ -149,7 +149,10 @@ export class RemoteSearchProvider {
 
 	constructor(filter: string) {
 		this._filter = filter;
-		this._remoteSearchP = getSettingsFromBing(filter);
+		this._remoteSearchP = getSettingsFromBing(filter).then(null, e => {
+			console.error(e.toString());
+			return null;
+		});
 	}
 
 	filterPreferences(preferencesModel: ISettingsEditorModel): TPromise<IFilterResult> {
@@ -176,6 +179,7 @@ export class RemoteSearchProvider {
 
 function getSettingsFromBing(filter: string): TPromise<{ [key: string]: number }> {
 	const url = prepareUrl(filter);
+	console.log('fetching: ' + url);
 	const p = fetch(url, {
 		headers: {
 			'User-Agent': 'request',

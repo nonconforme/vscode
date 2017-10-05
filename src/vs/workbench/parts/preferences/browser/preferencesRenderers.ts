@@ -250,7 +250,7 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 	private settingsGroupTitleRenderer: SettingsGroupTitleRenderer;
 	private filteredMatchesRenderer: FilteredMatchesRenderer;
 	private hiddenAreasRenderer: HiddenAreasRenderer;
-	// private editSettingActionRenderer: EditSettingRenderer;
+	private editSettingActionRenderer: EditSettingRenderer;
 	private mostRelevantMatchesRenderer: MostRelevantMatchesRenderer;
 
 	private _onUpdatePreference: Emitter<{ key: string, value: any, source: ISetting }> = new Emitter<{ key: string, value: any, source: ISetting }>();
@@ -275,10 +275,10 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 		this.settingsHeaderRenderer = this._register(instantiationService.createInstance(DefaultSettingsHeaderRenderer, editor, preferencesModel.configurationScope));
 		this.settingsGroupTitleRenderer = this._register(instantiationService.createInstance(SettingsGroupTitleRenderer, editor));
 		this.filteredMatchesRenderer = this._register(instantiationService.createInstance(FilteredMatchesRenderer, editor));
-		// this.editSettingActionRenderer = this._register(instantiationService.createInstance(EditSettingRenderer, editor, preferencesModel, this.settingHighlighter));
+		this.editSettingActionRenderer = this._register(instantiationService.createInstance(EditSettingRenderer, editor, preferencesModel, this.settingHighlighter));
 		this.mostRelevantMatchesRenderer = this._register(instantiationService.createInstance(MostRelevantMatchesRenderer, editor));
 
-		// this._register(this.editSettingActionRenderer.onUpdateSetting(e => this._onUpdatePreference.fire(e)));
+		this._register(this.editSettingActionRenderer.onUpdateSetting(e => this._onUpdatePreference.fire(e)));
 		const parenthesisHidingRenderer = this._register(instantiationService.createInstance(StaticContentHidingRenderer, editor, preferencesModel.settingsGroups));
 
 		const hiddenAreasProviders = [parenthesisHidingRenderer, this.mostRelevantMatchesRenderer];
@@ -293,38 +293,44 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 
 	public set associatedPreferencesModel(associatedPreferencesModel: IPreferencesEditorModel<ISetting>) {
 		this._associatedPreferencesModel = associatedPreferencesModel;
-		// this.editSettingActionRenderer.associatedPreferencesModel = associatedPreferencesModel;
+		this.editSettingActionRenderer.associatedPreferencesModel = associatedPreferencesModel;
 	}
 
 	public render() {
-		// this.settingsGroupTitleRenderer.render(this.preferencesModel.settingsGroups);
-		// this.editSettingActionRenderer.render(this.preferencesModel.settingsGroups, this._associatedPreferencesModel);
+		this.settingsGroupTitleRenderer.render(this.preferencesModel.settingsGroups);
+		this.editSettingActionRenderer.render(this.preferencesModel.settingsGroups, this._associatedPreferencesModel);
 		this.hiddenAreasRenderer.render();
-		// this.settingHighlighter.clear(true);
-		// this.settingsGroupTitleRenderer.showGroup(1);
-		// this.hiddenAreasRenderer.render();
+		this.settingHighlighter.clear(true);
+		this.settingsGroupTitleRenderer.showGroup(1);
+		this.hiddenAreasRenderer.render();
 	}
 
 	public filterPreferences(filterResult: IFilterResult): void {
 		this.filterResult = filterResult;
-		// if (!filterResult) {
-		// 	// TODO Never hit...
-		// 	this.settingHighlighter.clear(true);
-		// 	this.filteredMatchesRenderer.render(null);
-		// 	this.mostRelevantMatchesRenderer.render(null);
-		// 	this.settingsHeaderRenderer.render(this.preferencesModel.settingsGroups);
-		// 	this.settingsGroupTitleRenderer.render(this.preferencesModel.settingsGroups);
-		// 	this.settingsGroupTitleRenderer.showGroup(1);
-		// 	this.editSettingActionRenderer.render(this.preferencesModel.settingsGroups, this._associatedPreferencesModel);
-		// } else {
-		// 	this.filteredMatchesRenderer.render(filterResult);
-		// 	this.mostRelevantMatchesRenderer.render(filterResult);
-		// 	this.settingsHeaderRenderer.render(filterResult.filteredGroups);
-		// 	this.settingsGroupTitleRenderer.render(filterResult.filteredGroups);
-		// 	this.settingHighlighter.clear(true);
-		// 	this.editSettingActionRenderer.render(filterResult.filteredGroups, this._associatedPreferencesModel);
-		// }
-		this.mostRelevantMatchesRenderer.render(filterResult);
+		if (filterResult && filterResult.scores) {
+			this.filteredMatchesRenderer.render(null);
+			this.mostRelevantMatchesRenderer.render(filterResult);
+			this.settingsHeaderRenderer.render(filterResult.filteredGroups);
+			// this.settingsGroupTitleRenderer.render(filterResult.filteredGroups);
+			this.settingHighlighter.clear(true);
+			// this.editSettingActionRenderer.render(filterResult.filteredGroups, this._associatedPreferencesModel);
+		} else if (filterResult) {
+			this.filteredMatchesRenderer.render(filterResult);
+			this.mostRelevantMatchesRenderer.render(filterResult);
+			this.settingsHeaderRenderer.render(filterResult.filteredGroups);
+			this.settingsGroupTitleRenderer.render(filterResult.filteredGroups);
+			this.settingHighlighter.clear(true);
+			this.editSettingActionRenderer.render(filterResult.filteredGroups, this._associatedPreferencesModel);
+		} else {
+			// TODO Never hit...
+			this.settingHighlighter.clear(true);
+			this.filteredMatchesRenderer.render(null);
+			this.mostRelevantMatchesRenderer.render(null);
+			this.settingsHeaderRenderer.render(this.preferencesModel.settingsGroups);
+			this.settingsGroupTitleRenderer.render(this.preferencesModel.settingsGroups);
+			this.settingsGroupTitleRenderer.showGroup(1);
+			this.editSettingActionRenderer.render(this.preferencesModel.settingsGroups, this._associatedPreferencesModel);
+		}
 		this.hiddenAreasRenderer.render();
 	}
 
@@ -561,7 +567,7 @@ export class MostRelevantMatchesRenderer extends Disposable implements HiddenAre
 
 	public render(result: IFilterResult): void {
 		this.hiddenAreas = [];
-		if (result.matches.length) {
+		if (result && result.matches.length && result.scores) {
 			this.hiddenAreas = [];
 			this.editor.updateOptions({ readOnly: false });
 
@@ -572,7 +578,7 @@ export class MostRelevantMatchesRenderer extends Disposable implements HiddenAre
 				if (totalLines + settingLines <= MostRelevantMatchesRenderer.emptyLines) {
 					totalLines += settingLines;
 					const value = this.editor.getModel().getValueInRange(visibleRange);
-					return value.replace(/[^,]\n$/, ',\n'); // ensure ends in ','
+					return value.replace(/([^,])\n$/, '$1,\n'); // ensure ends in ','
 				} else {
 					// Skip lines that push the total length past 50
 					return null;
@@ -598,12 +604,16 @@ export class MostRelevantMatchesRenderer extends Disposable implements HiddenAre
 				endColumn: 0
 			}];
 		} else {
+			this.editor.updateOptions({ readOnly: false });
+
 			this.editor.executeEdits(MostRelevantMatchesRenderer.editId, [{
 				text: MostRelevantMatchesRenderer.bunchOfNewlines,
 				forceMoveMarkers: false,
-				range: new Range(MostRelevantMatchesRenderer.settingsInsertStart, 0, MostRelevantMatchesRenderer.settingsInsertEnd, 0),
+				range: new Range(MostRelevantMatchesRenderer.settingsInsertStart, 0, MostRelevantMatchesRenderer.settingsInsertEnd + 1, 0),
 				identifier: { major: 1, minor: 0 }
 			}]);
+
+			this.editor.updateOptions({ readOnly: true });
 			this.hiddenAreas = [{
 				startLineNumber: MostRelevantMatchesRenderer.settingsInsertStart,
 				startColumn: 0,

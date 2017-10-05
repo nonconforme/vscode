@@ -130,7 +130,7 @@ export class PreferencesEditor extends BaseEditor {
 		this.delayedFilterLogging = new Delayer<void>(1000);
 		this.onInput = new Emitter();
 
-		debounceEvent(this.onInput.event, (l, e) => e, 200)(() => {
+		debounceEvent(this.onInput.event, (l, e) => e, 200, /*leading=*/true)(() => {
 			this.filterPreferences(this.searchWidget.getValue().trim());
 		});
 	}
@@ -417,7 +417,8 @@ class PreferencesRenderers extends Disposable {
 
 	public filterPreferences(filter: string): TPromise<number> {
 		if (this._filtersInProgress) {
-			this._filtersInProgress.forEach(p => p.cancel());
+			// Resolved/rejected promises have no .cancel()
+			this._filtersInProgress.forEach(p => p.cancel && p.cancel());
 		}
 
 		const searchProvider = new RemoteSearchProvider(filter);
