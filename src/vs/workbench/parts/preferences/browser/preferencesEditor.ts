@@ -426,7 +426,7 @@ class PreferencesRenderers extends Disposable {
 			this._filterPreferences(filter, searchProvider, this._defaultPreferencesRenderer),
 			this._filterPreferences(filter, searchProvider, this._editablePreferencesRenderer)];
 
-		return TPromise.join(this._filtersInProgress).then(filterResults => {
+		return TPromise.join<IFilterResult>(this._filtersInProgress).then(filterResults => {
 			this._filtersInProgress = null;
 			const defaultPreferencesFilterResult = filterResults[0];
 			const editablePreferencesFilterResult = filterResults[1];
@@ -434,13 +434,22 @@ class PreferencesRenderers extends Disposable {
 			const defaultPreferencesFilteredGroups = defaultPreferencesFilterResult ? defaultPreferencesFilterResult.filteredGroups : this._getAllPreferences(this._defaultPreferencesRenderer);
 			const editablePreferencesFilteredGroups = editablePreferencesFilterResult ? editablePreferencesFilterResult.filteredGroups : this._getAllPreferences(this._editablePreferencesRenderer);
 			const consolidatedSettings = this._consolidateSettings(editablePreferencesFilteredGroups, defaultPreferencesFilteredGroups);
-			this._settingsNavigator = new SettingsNavigator(filter ? consolidatedSettings : []);
+
+			if (defaultPreferencesFilterResult.scores) {
+				this._settingsNavigator = null;
+			} else {
+				this._settingsNavigator = new SettingsNavigator(filter ? consolidatedSettings : []);
+			}
 
 			return consolidatedSettings.length;
 		});
 	}
 
 	public focusNextPreference(forward: boolean = true) {
+		if (!this._settingsNavigator) {
+			return;
+		}
+
 		const setting = forward ? this._settingsNavigator.next() : this._settingsNavigator.previous();
 		this._focusPreference(setting, this._defaultPreferencesRenderer);
 		this._focusPreference(setting, this._editablePreferencesRenderer);

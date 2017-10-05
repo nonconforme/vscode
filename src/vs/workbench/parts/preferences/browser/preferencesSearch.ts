@@ -144,7 +144,6 @@ export class PreferencesSearchProvider {
 	}
 
 	filterPreferences(preferencesModel: ISettingsEditorModel): TPromise<IFilterResult> {
-		// return this._localProvider.filterPreferences(preferencesModel);
 		return this._remoteProvider.filterPreferences(preferencesModel).then(null, err => {
 			return this._localProvider.filterPreferences(preferencesModel);
 		});
