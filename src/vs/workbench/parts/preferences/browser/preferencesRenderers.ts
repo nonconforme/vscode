@@ -410,16 +410,16 @@ export class StaticContentHidingRenderer extends Disposable implements HiddenAre
 				endColumn: model.getLineMaxColumn(2)
 			},
 			{
+				startLineNumber: DefaultSettingsEditorModel.MOST_RELEVANT_SECTION_LENGTH,
+				startColumn: model.getLineMinColumn(DefaultSettingsEditorModel.MOST_RELEVANT_SECTION_LENGTH),
+				endLineNumber: DefaultSettingsEditorModel.MOST_RELEVANT_SECTION_LENGTH + 3,
+				endColumn: model.getLineMaxColumn(DefaultSettingsEditorModel.MOST_RELEVANT_SECTION_LENGTH + 3)
+			},
+			{
 				startLineNumber: this.settingsGroups[0].range.endLineNumber + 1,
 				startColumn: model.getLineMinColumn(this.settingsGroups[0].range.endLineNumber + 1),
 				endLineNumber: this.settingsGroups[0].range.endLineNumber + 4,
 				endColumn: model.getLineMaxColumn(this.settingsGroups[0].range.endLineNumber + 4)
-			},
-			{
-				startLineNumber: this.settingsGroups[1].range.endLineNumber + 1,
-				startColumn: model.getLineMinColumn(this.settingsGroups[1].range.endLineNumber + 1),
-				endLineNumber: this.settingsGroups[1].range.endLineNumber + 4,
-				endColumn: model.getLineMaxColumn(this.settingsGroups[1].range.endLineNumber + 4)
 			},
 			{
 				startLineNumber: model.getLineCount() - 1,
