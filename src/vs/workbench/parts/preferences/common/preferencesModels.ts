@@ -7,6 +7,7 @@ import * as nls from 'vs/nls';
 import * as strings from 'vs/base/common/strings';
 import { assign } from 'vs/base/common/objects';
 import { distinct } from 'vs/base/common/arrays';
+import * as arrays from 'vs/base/common/arrays';
 import URI from 'vs/base/common/uri';
 import { IReference } from 'vs/base/common/lifecycle';
 import Event from 'vs/base/common/event';
@@ -36,7 +37,7 @@ class SettingMatches {
 	public readonly matches: IRange[];
 
 	constructor(searchString: string, setting: ISetting, private valuesMatcher: (filter: string, setting: ISetting) => IRange[]) {
-		this.matches = distinct(this._findMatchesInSetting(searchString, setting), (match) => `${match.startLineNumber}_${match.startColumn}_${match.endLineNumber}_${match.endColumn}_`);
+		this.matches = arrays.distinct(this._findMatchesInSetting(searchString, setting), (match) => `${match.startLineNumber}_${match.startColumn}_${match.endLineNumber}_${match.endColumn}_`);
 	}
 
 	private _findMatchesInSetting(searchString: string, setting: ISetting): IRange[] {
