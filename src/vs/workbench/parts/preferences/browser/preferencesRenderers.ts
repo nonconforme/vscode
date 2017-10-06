@@ -569,7 +569,7 @@ export class HiddenAreasRenderer extends Disposable {
 export class MostRelevantMatchesRenderer extends Disposable implements HiddenAreasProvider {
 
 	private static settingsInsertStart = 4;
-	private static settingsInsertEnd = 49;
+	private static settingsInsertEnd = DefaultSettingsEditorModel.MOST_RELEVANT_SECTION_LENGTH - 1;
 	private static emptyLines = MostRelevantMatchesRenderer.settingsInsertEnd - MostRelevantMatchesRenderer.settingsInsertStart + 1;
 	private static bunchOfNewlines = strings.repeat('\n', MostRelevantMatchesRenderer.emptyLines);
 	private static editId = 'mostRelevantMatchesRenderer';

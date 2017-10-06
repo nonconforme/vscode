@@ -473,7 +473,7 @@ export class WorkspaceConfigModel extends SettingsEditorModel implements ISettin
 
 export class DefaultSettingsEditorModel extends AbstractSettingsModel implements ISettingsEditorModel {
 
-	public static MOST_RELEVANT_SECTION_LENGTH = 50;
+	public static MOST_RELEVANT_SECTION_LENGTH = 100;
 
 	private _allSettingsGroups: ISettingsGroup[];
 	private _content: string;
