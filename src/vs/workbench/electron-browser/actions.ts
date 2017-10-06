@@ -784,7 +784,8 @@ class RemoveFromRecentlyOpened extends Action implements IPickOpenAction {
 	public static LABEL = nls.localize('remove', "Remove from Recently Opened");
 
 	constructor(
-		@IWindowsService private windowsService: IWindowsService
+		@IWindowsService private windowsService: IWindowsService,
+		@IMessageService private messageService: IMessageService
 	) {
 		super(RemoveFromRecentlyOpened.ID, RemoveFromRecentlyOpened.LABEL);
 
@@ -792,11 +793,17 @@ class RemoveFromRecentlyOpened extends Action implements IPickOpenAction {
 	}
 
 	public run(item: IPickOpenItem): TPromise<boolean> {
-		return this.windowsService.removeFromRecentlyOpened([item.getResource().fsPath]).then(() => {
-			item.remove();
-
-			return true;
+		const res = this.messageService.confirm({
+			title: 'The Title',
+			message: 'The super cool message',
+			detail: 'Even more details',
+			checkboxLabel: 'Never ask me again',
+			checked: false
 		});
+
+		console.log(res);
+
+		return void 0;
 	}
 }
 

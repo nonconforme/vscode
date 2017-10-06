@@ -128,7 +128,10 @@ export class WindowService implements IWindowService {
 	}
 
 	showMessageBox(options: Electron.MessageBoxOptions): number {
-		return remote.dialog.showMessageBox(remote.getCurrentWindow(), options);
+		// TODO confirm?
+		return remote.dialog.showMessageBox(remote.getCurrentWindow(), options, (response: number, checkboxChecked: boolean) => {
+			console.log(response, checkboxChecked);
+		});
 	}
 
 	showSaveDialog(options: Electron.SaveDialogOptions, callback?: (fileName: string) => void): string {

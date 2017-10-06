@@ -23,6 +23,8 @@ export interface IConfirmation {
 	detail?: string;
 	primaryButton?: string;
 	secondaryButton?: string;
+	checkboxLabel?: string;
+	checked?: boolean;
 }
 
 export const CloseAction = new Action('close.message', nls.localize('close', "Close"), null, true, () => TPromise.as(true));
