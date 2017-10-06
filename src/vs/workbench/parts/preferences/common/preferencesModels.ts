@@ -769,7 +769,7 @@ export class DefaultSettingsEditorModel extends AbstractSettingsModel implements
 
 
 	public dispose(): void {
-		// Not disposable
+		super.dispose();
 	}
 }
 

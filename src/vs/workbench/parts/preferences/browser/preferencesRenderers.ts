@@ -732,12 +732,15 @@ export class FeedbackWidgetRenderer extends Disposable {
 	}
 
 	private disposeWidget(): void {
-		this._feedbackWidget.dispose();
-		this._feedbackWidget = null;
+		if (this._feedbackWidget) {
+			this._feedbackWidget.dispose();
+			this._feedbackWidget = null;
+		}
 	}
 
 	public dispose() {
-		this._feedbackWidget.dispose();
+		this.disposeWidget();
+
 		super.dispose();
 	}
 }

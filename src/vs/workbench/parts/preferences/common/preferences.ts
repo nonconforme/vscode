@@ -79,6 +79,7 @@ export interface IPreferencesService {
 
 	resolveContent(uri: URI): TPromise<string>;
 	createPreferencesEditorModel<T>(uri: URI): TPromise<IPreferencesEditorModel<T>>;
+	disownPreferencesEditorModel(editorModel: IPreferencesEditorModel<any>): void;
 
 	openGlobalSettings(): TPromise<IEditor>;
 	openWorkspaceSettings(): TPromise<IEditor>;

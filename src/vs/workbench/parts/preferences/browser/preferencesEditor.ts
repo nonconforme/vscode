@@ -880,7 +880,7 @@ abstract class AbstractSettingsEditorContribution extends Disposable {
 			this.preferencesRendererCreationPromise.then(preferencesRenderer => {
 				if (preferencesRenderer) {
 					if (preferencesRenderer.associatedPreferencesModel) {
-						preferencesRenderer.associatedPreferencesModel.dispose();
+						this.preferencesService.disownPreferencesEditorModel(preferencesRenderer.associatedPreferencesModel);
 					}
 					preferencesRenderer.dispose();
 				}
