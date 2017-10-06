@@ -585,35 +585,7 @@ export class MostRelevantMatchesRenderer extends Disposable implements HiddenAre
 	public render(result: IFilterResult): void {
 		this.hiddenAreas = [];
 		if (result && result.matches.length && result.scores) {
-			this.hiddenAreas = [];
-			this.editor.updateOptions({ readOnly: false });
-
-			const relevantRanges = this.getRelevantRanges(result.filteredGroups, result.allGroups, result.scores, this.editor.getModel());
-			let totalLines = 0;
-			const settingsValue = relevantRanges.map(visibleRange => {
-				const settingLines = (visibleRange.endLineNumber - visibleRange.startLineNumber) + 1;
-				if (totalLines + settingLines <= MostRelevantMatchesRenderer.emptyLines) {
-					totalLines += settingLines;
-					const value = this.editor.getModel().getValueInRange(visibleRange);
-					return value.replace(/([^,])\n$/, '$1,\n'); // ensure ends in ','
-				} else {
-					// Skip lines that push the total length past 50
-					return null;
-				}
-			})
-				.filter(line => !!line)
-				.join('\n');
-
-			const settingsTextStartLine = MostRelevantMatchesRenderer.settingsInsertStart;
-			const settingsTextEndLine = settingsTextStartLine + totalLines - 1;
-			this.editor.executeEdits(MostRelevantMatchesRenderer.editId, [{
-				text: settingsValue,
-				forceMoveMarkers: false,
-				range: new Range(settingsTextStartLine, 0, settingsTextEndLine, 0),
-				identifier: { major: 1, minor: 0 }
-			}]);
-
-			this.editor.updateOptions({ readOnly: true });
+			const settingsTextEndLine = this.renderResults(result);
 
 			this.hiddenAreas = [{
 				startLineNumber: settingsTextEndLine + 1,
@@ -622,16 +594,7 @@ export class MostRelevantMatchesRenderer extends Disposable implements HiddenAre
 				endColumn: 0
 			}];
 		} else {
-			this.editor.updateOptions({ readOnly: false });
-
-			this.editor.executeEdits(MostRelevantMatchesRenderer.editId, [{
-				text: MostRelevantMatchesRenderer.bunchOfNewlines,
-				forceMoveMarkers: false,
-				range: new Range(MostRelevantMatchesRenderer.settingsInsertStart, 0, MostRelevantMatchesRenderer.settingsInsertEnd + 1, 0),
-				identifier: { major: 1, minor: 0 }
-			}]);
-
-			this.editor.updateOptions({ readOnly: true });
+			this.renderSearchResultsSection();
 			this.hiddenAreas = [{
 				startLineNumber: MostRelevantMatchesRenderer.settingsInsertStart,
 				startColumn: 0,
@@ -641,7 +604,54 @@ export class MostRelevantMatchesRenderer extends Disposable implements HiddenAre
 		}
 	}
 
-	private getRelevantRanges(filteredGroups: ISettingsGroup[], allSettingsGroups: ISettingsGroup[], scores: any, model: editorCommon.IModel): IRange[] {
+	private renderResults(result: IFilterResult): number {
+		this.hiddenAreas = [];
+		this.editor.updateOptions({ readOnly: false });
+
+		const relevantRanges = this.getOrderedSettingRanges(result.filteredGroups, result.allGroups, result.scores, this.editor.getModel());
+		let totalLines = 0;
+		const settingsValue = relevantRanges.map(visibleRange => {
+			const settingLines = (visibleRange.endLineNumber - visibleRange.startLineNumber) + 1;
+			if (totalLines + settingLines <= MostRelevantMatchesRenderer.emptyLines) {
+				totalLines += settingLines;
+				const value = this.editor.getModel().getValueInRange(visibleRange);
+				return value.replace(/([^,])\n$/, '$1,\n'); // ensure ends in ','
+			} else {
+				// Skip lines that push the total length past 50
+				return null;
+			}
+		})
+			.filter(line => !!line)
+			.join('\n');
+
+		const settingsTextStartLine = MostRelevantMatchesRenderer.settingsInsertStart;
+		const settingsTextEndLine = settingsTextStartLine + totalLines - 1;
+		this.editor.executeEdits(MostRelevantMatchesRenderer.editId, [{
+			text: settingsValue,
+			forceMoveMarkers: false,
+			range: new Range(settingsTextStartLine, 0, settingsTextEndLine, 0),
+			identifier: { major: 1, minor: 0 }
+		}]);
+
+		this.editor.updateOptions({ readOnly: true });
+
+		return settingsTextEndLine;
+	}
+
+	private renderSearchResultsSection(): void {
+		this.editor.updateOptions({ readOnly: false });
+
+		this.editor.executeEdits(MostRelevantMatchesRenderer.editId, [{
+			text: MostRelevantMatchesRenderer.bunchOfNewlines,
+			forceMoveMarkers: false,
+			range: new Range(MostRelevantMatchesRenderer.settingsInsertStart, 0, MostRelevantMatchesRenderer.settingsInsertEnd + 1, 0),
+			identifier: { major: 1, minor: 0 }
+		}]);
+
+		this.editor.updateOptions({ readOnly: true });
+	}
+
+	private getOrderedSettingRanges(filteredGroups: ISettingsGroup[], allSettingsGroups: ISettingsGroup[], scores: any, model: editorCommon.IModel): IRange[] {
 		const matchingRanges: { range: IRange, name: string }[] = [];
 		for (const group of allSettingsGroups) {
 			const filteredGroup = filteredGroups.filter(g => g.title === group.title)[0];

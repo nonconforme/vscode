@@ -178,7 +178,7 @@ class RemoteSearchProvider {
 
 	constructor(filter: string) {
 		this._filter = filter;
-		this._remoteSearchP = getSettingsFromBing(filter);
+		this._remoteSearchP = filter ? getSettingsFromBing(filter) : TPromise.wrap({});
 	}
 
 	filterPreferences(preferencesModel: ISettingsEditorModel): TPromise<IFilterResult> {
@@ -218,7 +218,6 @@ function getSettingsFromBing(filter: string): TPromise<{ [key: string]: number }
 		.then(result => {
 			console.log('time: ' + (Date.now() - start) / 1000);
 			const suggestions = (result.value || [])
-				.filter(r => r['@search.score'] >= 0.2)
 				.map(r => ({
 					name: r.Setting,
 					score: r['@search.score']
