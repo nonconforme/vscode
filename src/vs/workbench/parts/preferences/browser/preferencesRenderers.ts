@@ -20,7 +20,7 @@ import { IPreferencesService, ISettingsGroup, ISetting, IPreferencesEditorModel,
 import { SettingsEditorModel, DefaultSettingsEditorModel } from 'vs/workbench/parts/preferences/common/preferencesModels';
 import { ICodeEditor, IEditorMouseEvent, MouseTargetType } from 'vs/editor/browser/editorBrowser';
 import { IContextMenuService, ContextSubMenu } from 'vs/platform/contextview/browser/contextView';
-import { SettingsGroupTitleWidget, EditPreferenceWidget, SettingsHeaderWidget } from 'vs/workbench/parts/preferences/browser/preferencesWidgets';
+import { SettingsGroupTitleWidget, EditPreferenceWidget, SettingsHeaderWidget, FloatingClickWidget } from 'vs/workbench/parts/preferences/browser/preferencesWidgets';
 import { ITelemetryService } from 'vs/platform/telemetry/common/telemetry';
 import { RangeHighlightDecorations } from 'vs/workbench/common/editor/rangeDecorations';
 import { IConfigurationEditingService, ConfigurationEditingError, ConfigurationEditingErrorCode, ConfigurationTarget } from 'vs/workbench/services/configuration/common/configurationEditing';
@@ -250,6 +250,7 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 	private hiddenAreasRenderer: HiddenAreasRenderer;
 	private editSettingActionRenderer: EditSettingRenderer;
 	private mostRelevantMatchesRenderer: MostRelevantMatchesRenderer;
+	private feedbackWidgetRenderer: FeedbackWidgetRenderer;
 
 	private _onUpdatePreference: Emitter<{ key: string, value: any, source: ISetting }> = new Emitter<{ key: string, value: any, source: ISetting }>();
 	public readonly onUpdatePreference: Event<{ key: string, value: any, source: ISetting }> = this._onUpdatePreference.event;
@@ -275,6 +276,7 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 		this.filteredMatchesRenderer = this._register(instantiationService.createInstance(FilteredMatchesRenderer, editor));
 		this.editSettingActionRenderer = this._register(instantiationService.createInstance(EditSettingRenderer, editor, preferencesModel, this.settingHighlighter));
 		this.mostRelevantMatchesRenderer = this._register(instantiationService.createInstance(MostRelevantMatchesRenderer, editor));
+		this.feedbackWidgetRenderer = this._register(instantiationService.createInstance(FeedbackWidgetRenderer, editor));
 
 		this._register(this.editSettingActionRenderer.onUpdateSetting(e => this._onUpdatePreference.fire(e)));
 		const parenthesisHidingRenderer = this._register(instantiationService.createInstance(StaticContentHidingRenderer, editor, preferencesModel.settingsGroups));
@@ -298,6 +300,7 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 		this.settingsGroupTitleRenderer.render(this.preferencesModel.settingsGroups);
 		this.editSettingActionRenderer.render(this.preferencesModel.settingsGroups, this._associatedPreferencesModel);
 		this.mostRelevantMatchesRenderer.render(null);
+		this.feedbackWidgetRenderer.render(null);
 		this.hiddenAreasRenderer.render();
 		this.settingHighlighter.clear(true);
 		this.settingsGroupTitleRenderer.showGroup(1);
@@ -316,6 +319,7 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 			}
 
 			this.mostRelevantMatchesRenderer.render(filterResult);
+			this.feedbackWidgetRenderer.render(filterResult);
 			this.settingsHeaderRenderer.render(filterResult.filteredGroups);
 			this.settingHighlighter.clear(true);
 			this.editSettingActionRenderer.render(filterResult.filteredGroups, this._associatedPreferencesModel);
@@ -323,6 +327,7 @@ export class DefaultSettingsRenderer extends Disposable implements IPreferencesR
 			this.settingHighlighter.clear(true);
 			this.filteredMatchesRenderer.render(null);
 			this.mostRelevantMatchesRenderer.render(null);
+			this.feedbackWidgetRenderer.render(null);
 			this.settingsHeaderRenderer.render(this.preferencesModel.settingsGroups);
 			this.settingsGroupTitleRenderer.render(this.preferencesModel.settingsGroups);
 			this.settingsGroupTitleRenderer.showGroup(1);
@@ -685,6 +690,55 @@ export class MostRelevantMatchesRenderer extends Disposable implements HiddenAre
 			endLineNumber: range.endLineNumber,
 			endColumn: model.getLineMaxColumn(range.endLineNumber)
 		};
+	}
+}
+
+export class FeedbackWidgetRenderer extends Disposable {
+	private _feedbackWidget: FloatingClickWidget;
+
+	constructor(private editor: ICodeEditor,
+		@IInstantiationService private instantiationService: IInstantiationService,
+		@IWorkbenchEditorService private editorService: IWorkbenchEditorService
+	) {
+		super();
+	}
+
+	public render(result: IFilterResult): void {
+		if (result && result.scores) {
+			this.showWidget();
+		} else if (this._feedbackWidget) {
+			this.disposeWidget();
+		}
+	}
+
+	private showWidget(): void {
+		if (!this._feedbackWidget) {
+			this._feedbackWidget = this._register(this.instantiationService.createInstance(FloatingClickWidget, this.editor, 'Provide feedback', null));
+			this._register(this._feedbackWidget.onClick(() => this.getFeedback()));
+			this._feedbackWidget.render();
+		}
+	}
+
+	private getFeedback(): void {
+		this.editorService.openEditor({ contents: 'test' }, true).then(feedbackEditor => {
+			const sendFeedbackWidget = this._register(this.instantiationService.createInstance(FloatingClickWidget, feedbackEditor.getControl(), 'Send feedback', null));
+			this._register(sendFeedbackWidget.onClick(() => this.sendFeedback()));
+			sendFeedbackWidget.render();
+		});
+	}
+
+	private sendFeedback(): void {
+
+	}
+
+	private disposeWidget(): void {
+		this._feedbackWidget.dispose();
+		this._feedbackWidget = null;
+	}
+
+	public dispose() {
+		this._feedbackWidget.dispose();
+		super.dispose();
 	}
 }
 
